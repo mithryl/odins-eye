@@ -1,26 +1,174 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-deep: #0B0D1A;
+  --bg-surface: #13152A;
+  --bg-surface-hover: #1C1F3A;
+  --bg-input: #0E1020;
+  --gold: #C9A55C;
+  --gold-hover: #D4B06A;
+  --gold-muted: rgba(201, 165, 92, 0.15);
+  --purple-deep: #4A3F8A;
+  --text-primary: #E8E4DC;
+  --text-secondary: #9B96A6;
+  --text-muted: #6B6780;
+  --border: #2A2D42;
+  --border-focus: #C9A55C;
+  --error: #E05252;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-bg-deep: var(--bg-deep);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-surface-hover: var(--bg-surface-hover);
+  --color-bg-input: var(--bg-input);
+  --color-gold: var(--gold);
+  --color-gold-hover: var(--gold-hover);
+  --color-gold-muted: var(--gold-muted);
+  --color-purple-deep: var(--purple-deep);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-border: var(--border);
+  --color-border-focus: var(--border-focus);
+  --color-error: var(--error);
+  --font-heading: "Cinzel", serif;
+  --font-body: "Inter", sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+}
+
+/* Subtle radial glow behind the form */
+.bg-celestial {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(74, 63, 138, 0.15) 0%, transparent 60%),
+    radial-gradient(ellipse at 50% 100%, rgba(201, 165, 92, 0.05) 0%, transparent 40%),
+    var(--bg-deep);
+  background-attachment: fixed;
+}
+
+/* Step transition */
+.step-enter {
+  animation: stepFadeIn 0.3s ease-out;
+}
+
+@keyframes stepFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-deep);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Glassmorphism card */
+.glass-card {
+  position: relative;
+  border: 1px solid rgba(201, 165, 92, 0.08);
+  border-radius: 0.75rem;
+  box-shadow:
+    0 0 16px rgba(201, 165, 92, 0.16),
+    0 0 32px rgba(201, 165, 92, 0.08),
+    0 4px 16px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+/* Frost layer — thin tint over canvas-blurred stars */
+.glass-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(18, 20, 40, 0.35) 0%,
+    rgba(14, 16, 34, 0.3) 50%,
+    rgba(18, 20, 40, 0.35) 100%
+  );
+  z-index: 0;
+}
+
+/* Inner top-edge highlight for glass reflection */
+.glass-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    transparent 40%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Ensure card content sits above the frost layer */
+.glass-card > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Focus ring for accessibility */
+*:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* Print styles for PDF export */
+@media print {
+  body, .bg-celestial {
+    background: #0B0D1A !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide non-content elements */
+  canvas,
+  header,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+
+  /* The PDF-capturable area */
+  article {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  /* Remove backdrop blur which doesn't render in print */
+  [class*="backdrop-blur"] {
+    backdrop-filter: none !important;
+  }
+
+  /* Ensure borders and backgrounds render */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Page margin settings */
+  @page {
+    margin: 0.5in 0.6in;
+    size: letter;
+  }
 }
