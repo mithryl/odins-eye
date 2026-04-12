@@ -1,10 +1,8 @@
 import FormStepper from "@/components/FormStepper";
-import StarField from "@/components/StarField";
 
 export default function Home() {
   return (
-    <main className="min-h-screen flex flex-col relative">
-      <StarField />
+    <main className="min-h-screen flex flex-col">
       {/* Header */}
       <header className="pt-10 pb-1 text-center">
         <h1 className="font-heading text-3xl md:text-4xl lg:text-5xl text-text-primary tracking-wide mb-3">

@@ -36,29 +36,44 @@
   --font-body: "Inter", sans-serif;
 }
 
-html, body {
+html {
   background: var(--bg-deep);
-  color: var(--text-primary);
-  font-family: var(--font-body);
-  min-height: 100%;
 }
 
-/* Subtle radial glow — use a fixed pseudo-element instead of
-   background-attachment: fixed, which is unreliable on iOS Safari. */
-.bg-celestial {
+html, body {
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  /* Prevent horizontal scroll on iOS */
+  overflow-x: hidden;
+}
+
+body {
   background: var(--bg-deep);
+  /* Allow the fixed background layers to paint correctly on iOS */
   position: relative;
 }
 
-.bg-celestial::before {
-  content: "";
+/* Fixed radial gradient layer — sits above the body background, below content. */
+.celestial-gradient {
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(74, 63, 138, 0.15) 0%, transparent 60%),
-    radial-gradient(ellipse at 50% 100%, rgba(201, 165, 92, 0.05) 0%, transparent 40%);
+    radial-gradient(ellipse at 50% 0%, rgba(74, 63, 138, 0.18) 0%, transparent 60%),
+    radial-gradient(ellipse at 50% 100%, rgba(201, 165, 92, 0.06) 0%, transparent 40%);
   pointer-events: none;
-  z-index: -1;
+  z-index: 0;
+}
+
+/* Content layer sits above all backgrounds */
+.site-content {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  /* Use dynamic viewport height where supported for better iOS fit */
+  min-height: 100dvh;
 }
 
 /* Step transition */
@@ -90,30 +105,33 @@ html, body {
   background: var(--text-muted);
 }
 
-/* Glassmorphism card */
+/* Glassmorphism card — uses CSS backdrop-filter to blur the starfield
+   canvas sitting behind it. Works on iOS Safari 15.4+ reliably because
+   the canvas and gradient are now root-level fixed children, not nested
+   inside a transformed/blurred container. */
 .glass-card {
   position: relative;
-  border: 1px solid rgba(201, 165, 92, 0.08);
+  border: 1px solid rgba(201, 165, 92, 0.1);
   border-radius: 0.75rem;
+  background: linear-gradient(
+    135deg,
+    rgba(19, 21, 42, 0.65) 0%,
+    rgba(14, 16, 34, 0.55) 50%,
+    rgba(19, 21, 42, 0.65) 100%
+  );
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
   box-shadow:
     0 0 16px rgba(201, 165, 92, 0.16),
     0 0 32px rgba(201, 165, 92, 0.08),
     0 4px 16px rgba(0, 0, 0, 0.25);
-  overflow: hidden;
 }
 
-/* Frost layer — thin tint over canvas-blurred stars */
-.glass-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(18, 20, 40, 0.35) 0%,
-    rgba(14, 16, 34, 0.3) 50%,
-    rgba(18, 20, 40, 0.35) 100%
-  );
-  z-index: 0;
+/* Fallback for browsers without backdrop-filter support — solid bg */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-card {
+    background: rgba(15, 17, 35, 0.92);
+  }
 }
 
 /* Inner top-edge highlight for glass reflection */

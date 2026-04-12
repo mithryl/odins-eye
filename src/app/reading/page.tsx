@@ -3,7 +3,6 @@
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState, useRef } from "react";
 import Image from "next/image";
-import StarField from "@/components/StarField";
 
 interface PlanetPlacement {
   planet: string;
@@ -371,9 +370,8 @@ function ReadingContent() {
   }
 
   return (
-    <main className="min-h-screen relative">
-      <StarField />
-      <header className="pt-12 pb-8 text-center relative z-10">
+    <main className="min-h-screen">
+      <header className="pt-12 pb-8 text-center">
         <Image
           src="/odinsark-logo-white.png"
           alt="Odinsark"
@@ -387,7 +385,7 @@ function ReadingContent() {
         <p className="text-sm text-text-secondary">Your Natal Reading</p>
       </header>
 
-      <article className="max-w-3xl mx-auto px-4 pb-16 relative z-10">
+      <article className="max-w-3xl mx-auto px-4 pb-16">
         {/* PDF-capturable container */}
         <div ref={pdfRef}>
           {/* Chart Data — at the top */}
@@ -450,7 +448,7 @@ function ReadingContent() {
         </div>
       </article>
 
-      <footer className="py-6 text-center text-xs text-text-muted relative z-10">
+      <footer className="py-6 text-center text-xs text-text-muted">
         <p>Odinsark Labs LLC</p>
       </footer>
     </main>
