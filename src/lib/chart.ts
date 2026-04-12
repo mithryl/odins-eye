@@ -1,4 +1,6 @@
 import * as Astronomy from "astronomy-engine";
+import tzlookup from "tz-lookup";
+import { fromZonedTime } from "date-fns-tz";
 
 const ZODIAC_SIGNS = [
   "Aries", "Taurus", "Gemini", "Cancer",
@@ -178,15 +180,23 @@ export function calculateChart(
   latitude: number,
   longitude: number,
 ): NatalChart {
-  // Build date string. If no birth time, default to noon (reduces max error to 12hrs)
-  let dateStr = birthDate;
+  // Look up the IANA timezone for the birth location so we can interpret
+  // the birth time correctly regardless of what timezone the server runs in.
+  // This is critical: without this, Vercel's UTC server would parse local
+  // birth times as UTC, shifting the Ascendant by 75-90 degrees in the US.
+  const timezone = tzlookup(latitude, longitude);
+
+  // Build local date string
+  let localDateStr = birthDate;
   if (birthTime) {
-    dateStr += `T${birthTime}:00`;
+    localDateStr += `T${birthTime}:00`;
   } else {
-    dateStr += "T12:00:00";
+    localDateStr += "T12:00:00";
   }
 
-  const date = new Date(dateStr);
+  // Convert local time in the birth location's timezone to true UTC.
+  // date-fns-tz handles historical DST correctly.
+  const date = fromZonedTime(localDateStr, timezone);
   const time = new Astronomy.AstroTime(date);
 
   const placements: PlanetPlacement[] = PLANETS.map((body) => {

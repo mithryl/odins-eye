@@ -36,19 +36,29 @@
   --font-body: "Inter", sans-serif;
 }
 
-body {
+html, body {
   background: var(--bg-deep);
   color: var(--text-primary);
   font-family: var(--font-body);
+  min-height: 100%;
 }
 
-/* Subtle radial glow behind the form */
+/* Subtle radial glow — use a fixed pseudo-element instead of
+   background-attachment: fixed, which is unreliable on iOS Safari. */
 .bg-celestial {
+  background: var(--bg-deep);
+  position: relative;
+}
+
+.bg-celestial::before {
+  content: "";
+  position: fixed;
+  inset: 0;
   background:
     radial-gradient(ellipse at 50% 0%, rgba(74, 63, 138, 0.15) 0%, transparent 60%),
-    radial-gradient(ellipse at 50% 100%, rgba(201, 165, 92, 0.05) 0%, transparent 40%),
-    var(--bg-deep);
-  background-attachment: fixed;
+    radial-gradient(ellipse at 50% 100%, rgba(201, 165, 92, 0.05) 0%, transparent 40%);
+  pointer-events: none;
+  z-index: -1;
 }
 
 /* Step transition */

@@ -1,8 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { FormData, initialFormData, STEPS } from "@/lib/types";
+
+const DRAFT_KEY = "odins-eye-draft";
+
+interface SavedDraft {
+  data: FormData;
+  currentStep: number;
+  savedAt: number;
+}
 import StepIndicator from "./StepIndicator";
 import BirthDataStep from "./steps/BirthDataStep";
 import LifeContextStep from "./steps/LifeContextStep";
@@ -21,9 +29,67 @@ export default function FormStepper() {
   const [data, setData] = useState<FormData>(initialFormData);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  const [showResumeBanner, setShowResumeBanner] = useState(false);
+  const hasDraftRef = useRef(false);
+
+  // Load draft on mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const draft = JSON.parse(raw) as SavedDraft;
+        if (draft.data && typeof draft.currentStep === "number") {
+          // Check if draft has any meaningful content
+          const hasContent = Object.values(draft.data).some(
+            (v) => typeof v === "string" && v.trim().length > 0
+          );
+          if (hasContent) {
+            setData(draft.data);
+            setCurrentStep(draft.currentStep);
+            hasDraftRef.current = true;
+            setShowResumeBanner(true);
+          }
+        }
+      }
+    } catch {
+      // Ignore corrupted drafts
+    }
+    setHydrated(true);
+  }, []);
+
+  // Save draft on every change (after hydration)
+  useEffect(() => {
+    if (!hydrated || typeof window === "undefined") return;
+    // Don't save an untouched initial state
+    const hasContent = Object.values(data).some(
+      (v) => typeof v === "string" && v.trim().length > 0
+    );
+    if (!hasContent) return;
+    try {
+      const draft: SavedDraft = {
+        data,
+        currentStep,
+        savedAt: Date.now(),
+      };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch {
+      // Quota exceeded or disabled — silently ignore
+    }
+  }, [data, currentStep, hydrated]);
 
   const updateData = (updates: Partial<FormData>) => {
     setData((prev) => ({ ...prev, ...updates }));
+  };
+
+  const clearDraft = () => {
+    if (typeof window === "undefined") return;
+    localStorage.removeItem(DRAFT_KEY);
+    setData(initialFormData);
+    setCurrentStep(0);
+    setShowResumeBanner(false);
+    hasDraftRef.current = false;
   };
 
   const validateStep = (): string | null => {
@@ -69,13 +135,62 @@ export default function FormStepper() {
         body: JSON.stringify(data),
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to generate reading");
+      if (!response.ok || !response.body) {
+        throw new Error("Failed to reach the server");
       }
 
-      sessionStorage.setItem("odins-eye-reading", JSON.stringify({ ...result, firstName: data.firstName }));
+      // Consume NDJSON stream — heartbeats keep the connection alive
+      // on mobile browsers that would otherwise drop long requests.
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let result: Record<string, unknown> | null = null;
+      let streamError: string | null = null;
+
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          let parsed: Record<string, unknown>;
+          try {
+            parsed = JSON.parse(line);
+          } catch {
+            continue;
+          }
+          if (parsed.event === "heartbeat") continue;
+          if (parsed.event === "status") continue;
+          if (parsed.event === "error") {
+            streamError = typeof parsed.error === "string" ? parsed.error : "Generation failed";
+            break;
+          }
+          if (parsed.event === "result") {
+            result = parsed;
+          }
+        }
+        if (streamError) break;
+      }
+
+      if (streamError) {
+        throw new Error(streamError);
+      }
+      if (!result) {
+        throw new Error("No result received from the server");
+      }
+
+      // Clear the draft now that we have a successful reading
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("odins-eye-draft");
+      }
+
+      sessionStorage.setItem(
+        "odins-eye-reading",
+        JSON.stringify({ ...result, firstName: data.firstName })
+      );
       router.push("/reading");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -103,6 +218,35 @@ export default function FormStepper() {
 
   return (
     <div className="w-full max-w-2xl mx-auto px-4">
+      {showResumeBanner && (
+        <div className="mb-4 rounded-lg border border-gold/30 bg-gold-muted px-4 py-3 flex items-center justify-between gap-3">
+          <div className="text-sm text-text-primary">
+            <span className="text-gold font-medium">Welcome back.</span>{" "}
+            <span className="text-text-secondary">
+              We saved your progress — pick up where you left off.
+            </span>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button
+              onClick={() => setShowResumeBanner(false)}
+              className="text-xs text-text-secondary hover:text-text-primary transition-colors cursor-pointer px-2 py-1"
+            >
+              Continue
+            </button>
+            <button
+              onClick={() => {
+                if (confirm("Start over? Your saved progress will be cleared.")) {
+                  clearDraft();
+                }
+              }}
+              className="text-xs text-text-muted hover:text-error transition-colors cursor-pointer px-2 py-1"
+            >
+              Start over
+            </button>
+          </div>
+        </div>
+      )}
+
       <StepIndicator currentStep={currentStep} />
 
       <div className="mb-4 text-center">
