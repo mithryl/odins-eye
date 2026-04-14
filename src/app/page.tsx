@@ -6,9 +6,9 @@ export default function Home() {
       {/* Header */}
       <header className="pt-10 pb-1 text-center">
         <img
-          src="/odinsark-clean.png"
-          alt="Odinsark"
-          className="mx-auto mb-6 w-[80px] md:w-[105px] h-auto invert"
+          src="/odin.png"
+          alt="Odin"
+          className="mx-auto mb-6 w-[180px] md:w-[240px] h-auto"
         />
         <h1 className="font-heading text-3xl md:text-4xl lg:text-5xl text-text-primary tracking-wide mb-3">
           Odin&apos;s Eye
