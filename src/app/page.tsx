@@ -6,9 +6,9 @@ export default function Home() {
       {/* Header */}
       <header className="pt-10 pb-1 text-center">
         <img
-          src="/runeweave-logo.png"
-          alt="RuneWeave Labs"
-          className="mx-auto mb-6 w-[320px] md:w-[420px] h-auto"
+          src="/odinsark-clean.png"
+          alt="Odinsark"
+          className="mx-auto mb-6 w-[320px] md:w-[420px] h-auto invert"
         />
         <h1 className="font-heading text-3xl md:text-4xl lg:text-5xl text-text-primary tracking-wide mb-3">
           Odin&apos;s Eye
