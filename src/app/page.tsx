@@ -4,7 +4,7 @@ export default function Home() {
   return (
     <main className="min-h-screen flex flex-col">
       {/* Header */}
-      <header className="pt-10 pb-1 text-center">
+      <header className="pt-2 pb-1 text-center">
         <img
           src="/odin.png"
           alt="Odin"
