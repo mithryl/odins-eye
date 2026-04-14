@@ -41,7 +41,9 @@ export default function FormStepper() {
           if (hasContent) {
             // Merge with initial to pick up any fields added since the draft was saved
             setData({ ...initialFormData, ...draft.data });
-            setCurrentStep(draft.currentStep);
+            // Clamp step in case the form structure shrank since the draft was saved
+            const clamped = Math.max(0, Math.min(draft.currentStep, STEPS.length - 1));
+            setCurrentStep(clamped);
             hasDraftRef.current = true;
             setShowResumeBanner(true);
           }
