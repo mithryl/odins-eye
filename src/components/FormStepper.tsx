@@ -46,7 +46,8 @@ export default function FormStepper() {
             (v) => typeof v === "string" && v.trim().length > 0
           );
           if (hasContent) {
-            setData(draft.data);
+            // Merge with initial to pick up any fields added since the draft was saved
+            setData({ ...initialFormData, ...draft.data });
             setCurrentStep(draft.currentStep);
             hasDraftRef.current = true;
             setShowResumeBanner(true);
@@ -99,8 +100,10 @@ export default function FormStepper() {
       if (!data.birthTimePrecision) return "Please select a birth time option.";
       if (data.birthTimePrecision === "exact" && !data.birthTimeExact) return "Please enter your exact birth time.";
       if (data.birthTimePrecision === "approximate" && !data.birthTimeApproximate) return "Please select an approximate time of day.";
-      if (!data.birthCountry.trim()) return "Please enter your birth country.";
-      if (!data.birthCity.trim()) return "Please enter your birth city.";
+      if (!data.birthCountryCode) return "Please select your birth country.";
+      if (!data.birthCity.trim() || data.birthLatitude === null) {
+        return "Please select your birth city from the dropdown.";
+      }
     }
     return null;
   };
@@ -180,11 +183,6 @@ export default function FormStepper() {
       }
       if (!result) {
         throw new Error("No result received from the server");
-      }
-
-      // Clear the draft now that we have a successful reading
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("odins-eye-draft");
       }
 
       sessionStorage.setItem(

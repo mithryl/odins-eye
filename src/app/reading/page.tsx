@@ -443,8 +443,21 @@ function ReadingContent() {
             href="/"
             className="rounded-lg border border-border px-6 py-3 text-sm text-text-secondary hover:text-text-primary hover:border-text-muted transition-colors"
           >
-            Generate Another Reading
+            Edit & Regenerate
           </a>
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                localStorage.removeItem("odins-eye-draft");
+                sessionStorage.removeItem("odins-eye-reading");
+              }
+              window.location.href = "/";
+            }}
+            className="rounded-lg border border-border px-6 py-3 text-sm text-text-secondary hover:text-text-primary hover:border-text-muted transition-colors cursor-pointer"
+          >
+            Start Fresh
+          </button>
         </div>
       </article>
 

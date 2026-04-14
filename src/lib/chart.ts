@@ -1,6 +1,13 @@
-import * as Astronomy from "astronomy-engine";
+import * as sweph from "sweph";
 import tzlookup from "tz-lookup";
 import { fromZonedTime } from "date-fns-tz";
+import path from "path";
+
+const { calc_ut, houses_ex2, utc_to_jd, set_ephe_path, constants: C } = sweph;
+
+// Point Swiss Ephemeris at the bundled .se1 files (seas/semo/sepl, 1800–2399).
+// outputFileTracingIncludes in next.config.ts ensures these ship with the function.
+set_ephe_path(path.join(process.cwd(), "vendor/ephe"));
 
 const ZODIAC_SIGNS = [
   "Aries", "Taurus", "Gemini", "Cancer",
@@ -8,21 +15,39 @@ const ZODIAC_SIGNS = [
   "Sagittarius", "Capricorn", "Aquarius", "Pisces",
 ] as const;
 
-const PLANETS: Astronomy.Body[] = [
-  Astronomy.Body.Sun,
-  Astronomy.Body.Moon,
-  Astronomy.Body.Mercury,
-  Astronomy.Body.Venus,
-  Astronomy.Body.Mars,
-  Astronomy.Body.Jupiter,
-  Astronomy.Body.Saturn,
-  Astronomy.Body.Uranus,
-  Astronomy.Body.Neptune,
-  Astronomy.Body.Pluto,
+const FLAGS = C.SEFLG_SWIEPH | C.SEFLG_SPEED;
+
+interface BodySpec {
+  name: string;
+  id: number;
+}
+
+const BODIES: BodySpec[] = [
+  { name: "Sun", id: C.SE_SUN },
+  { name: "Moon", id: C.SE_MOON },
+  { name: "Mercury", id: C.SE_MERCURY },
+  { name: "Venus", id: C.SE_VENUS },
+  { name: "Mars", id: C.SE_MARS },
+  { name: "Jupiter", id: C.SE_JUPITER },
+  { name: "Saturn", id: C.SE_SATURN },
+  { name: "Uranus", id: C.SE_URANUS },
+  { name: "Neptune", id: C.SE_NEPTUNE },
+  { name: "Pluto", id: C.SE_PLUTO },
+  { name: "North Node", id: C.SE_TRUE_NODE },
+  { name: "Chiron", id: C.SE_CHIRON },
+  { name: "Lilith", id: C.SE_MEAN_APOG },
 ];
 
 export interface PlanetPlacement {
   planet: string;
+  longitude: number;
+  sign: string;
+  degree: number;
+  house?: number;
+}
+
+export interface HouseCusp {
+  house: number;
   longitude: number;
   sign: string;
   degree: number;
@@ -33,6 +58,9 @@ export interface NatalChart {
   risingSign: string | null;
   risingDegree: number | null;
   ascendantLongitude: number | null;
+  midheavenSign: string | null;
+  midheavenDegree: number | null;
+  houses: HouseCusp[] | null;
   birthDateTime: string;
 }
 
@@ -43,135 +71,20 @@ function longitudeToSign(longitude: number): { sign: string; degree: number } {
   return { sign: ZODIAC_SIGNS[index], degree: Math.round(degree * 100) / 100 };
 }
 
-function getGeocentricLongitude(body: Astronomy.Body, time: Astronomy.AstroTime): number {
-  const vector = Astronomy.GeoVector(body, time, true);
-  const ecliptic = Astronomy.Ecliptic(vector);
-  return ecliptic.elon;
-}
-
-/**
- * Calculate Black Moon Lilith (Mean Lunar Apogee) longitude.
- * Lilith is the point where the Moon is farthest from Earth in its orbit.
- * Uses Meeus formula for the mean longitude of the Moon's perigee + 180°.
- */
-function calculateLilith(time: Astronomy.AstroTime): number {
-  const T = time.tt / 36525.0;
-  // Mean longitude of lunar perigee (Meeus)
-  let perigee = 83.3532465
-    + 4069.0137287 * T
-    - 0.0103200 * T * T
-    - T * T * T / 80053
-    + T * T * T * T / 18999000;
-
-  // Lilith = perigee + 180° (apogee is opposite perigee)
-  let lilith = perigee + 180;
-  lilith = ((lilith % 360) + 360) % 360;
-  return lilith;
-}
-
-/**
- * Calculate Chiron's ecliptic longitude using simplified orbital elements.
- * Chiron orbits between Saturn and Uranus with a ~50.7 year period.
- * This uses a Keplerian approximation — accurate to ~1° for modern dates.
- */
-function calculateChiron(time: Astronomy.AstroTime): number {
-  const T = time.tt / 36525.0;
-
-  // Chiron orbital elements (epoch J2000)
-  const a = 13.6481; // semi-major axis (AU)
-  const e = 0.3791; // eccentricity
-  const i = 6.931; // inclination (degrees)
-  const omega = 339.557; // argument of perihelion (degrees)
-  const Omega = 209.385; // longitude of ascending node (degrees)
-  const M0 = 26.892; // mean anomaly at J2000 (degrees)
-  const n = 0.01942; // mean daily motion (degrees/day)
-
-  // Mean anomaly
-  const daysSinceJ2000 = time.tt;
-  let M = M0 + n * daysSinceJ2000;
-  M = ((M % 360) + 360) % 360;
-  const Mrad = M * Math.PI / 180;
-
-  // Solve Kepler's equation iteratively: E - e*sin(E) = M
-  let E = Mrad;
-  for (let iter = 0; iter < 20; iter++) {
-    E = Mrad + e * Math.sin(E);
+function assignHouse(longitude: number, cusps: number[]): number {
+  // cusps is length-12, indexed 0..11 for houses 1..12
+  const norm = ((longitude % 360) + 360) % 360;
+  for (let i = 0; i < 12; i++) {
+    const start = cusps[i];
+    const end = cusps[(i + 1) % 12];
+    // Handle zodiac wrap-around
+    if (start <= end) {
+      if (norm >= start && norm < end) return i + 1;
+    } else {
+      if (norm >= start || norm < end) return i + 1;
+    }
   }
-
-  // True anomaly
-  const cosV = (Math.cos(E) - e) / (1 - e * Math.cos(E));
-  const sinV = (Math.sqrt(1 - e * e) * Math.sin(E)) / (1 - e * Math.cos(E));
-  const v = Math.atan2(sinV, cosV) * 180 / Math.PI;
-
-  // Ecliptic longitude (simplified — ignoring inclination correction for ~1° accuracy)
-  const omegaRad = omega * Math.PI / 180;
-  const OmegaRad = Omega * Math.PI / 180;
-  const iRad = i * Math.PI / 180;
-  const vRad = v * Math.PI / 180;
-
-  const u = omegaRad + vRad;
-  const lon = Math.atan2(
-    Math.sin(u) * Math.cos(iRad),
-    Math.cos(u)
-  ) + OmegaRad;
-
-  let lonDeg = lon * 180 / Math.PI;
-  lonDeg = ((lonDeg % 360) + 360) % 360;
-  return lonDeg;
-}
-
-/**
- * Calculate the Mean North Node (ascending lunar node) longitude.
- * Uses the standard Meeus formula for the longitude of the Moon's ascending node.
- * The North Node moves retrograde through the zodiac over ~18.6 years.
- */
-function calculateNorthNode(time: Astronomy.AstroTime): number {
-  const T = time.tt / 36525.0; // Julian centuries from J2000
-  let omega = 125.0445479
-    - 1934.1362891 * T
-    + 0.0020754 * T * T
-    + T * T * T / 467441
-    - T * T * T * T / 60616000;
-
-  // Normalize to 0-360
-  omega = ((omega % 360) + 360) % 360;
-  return omega;
-}
-
-/**
- * Calculate the Ascendant (rising sign) using the standard Meeus formula.
- *
- * Formula: tan(ASC) = cos(RAMC) / -(sin(e)*tan(lat) + cos(e)*sin(RAMC))
- *
- * where RAMC = Local Sidereal Time in degrees, e = obliquity, lat = geographic latitude.
- */
-function calculateAscendant(time: Astronomy.AstroTime, latitude: number, longitude: number): number {
-  // Get Greenwich sidereal time (hours) and convert to local
-  const gst = Astronomy.SiderealTime(time);
-  // Proper modulo for negative values
-  const lst = (((gst + longitude / 15) % 24) + 24) % 24;
-
-  // RAMC (Right Ascension of the Midheaven) = LST in degrees
-  const ramc = lst * 15;
-
-  // Calculate obliquity of the ecliptic for the given date (Meeus formula)
-  const T = (time.tt) / 36525.0; // centuries from J2000
-  const obliquity = 23.4392911 - 0.0130042 * T - 1.64e-7 * T * T + 5.036e-7 * T * T * T;
-
-  const ramcRad = ramc * Math.PI / 180;
-  const oblRad = obliquity * Math.PI / 180;
-  const latRad = latitude * Math.PI / 180;
-
-  // Standard Ascendant formula (Meeus, Astronomical Algorithms)
-  // tan(ASC) = cos(RAMC) / -(sin(e)*tan(lat) + cos(e)*sin(RAMC))
-  const y = Math.cos(ramcRad);
-  const x = -(Math.sin(oblRad) * Math.tan(latRad) + Math.cos(oblRad) * Math.sin(ramcRad));
-  let ascendant = Math.atan2(y, x) * 180 / Math.PI;
-
-  // Normalize to 0-360
-  ascendant = ((ascendant % 360) + 360) % 360;
-
-  return ascendant;
+  return 1;
 }
 
 export function calculateChart(
@@ -180,13 +93,8 @@ export function calculateChart(
   latitude: number,
   longitude: number,
 ): NatalChart {
-  // Look up the IANA timezone for the birth location so we can interpret
-  // the birth time correctly regardless of what timezone the server runs in.
-  // This is critical: without this, Vercel's UTC server would parse local
-  // birth times as UTC, shifting the Ascendant by 75-90 degrees in the US.
   const timezone = tzlookup(latitude, longitude);
 
-  // Build local date string
   let localDateStr = birthDate;
   if (birthTime) {
     localDateStr += `T${birthTime}:00`;
@@ -194,72 +102,87 @@ export function calculateChart(
     localDateStr += "T12:00:00";
   }
 
-  // Convert local time in the birth location's timezone to true UTC.
-  // date-fns-tz handles historical DST correctly.
-  const date = fromZonedTime(localDateStr, timezone);
-  const time = new Astronomy.AstroTime(date);
+  const utcDate = fromZonedTime(localDateStr, timezone);
 
-  const placements: PlanetPlacement[] = PLANETS.map((body) => {
-    const lon = getGeocentricLongitude(body, time);
+  // utc_to_jd wants split UTC components + decimal seconds
+  const year = utcDate.getUTCFullYear();
+  const month = utcDate.getUTCMonth() + 1;
+  const day = utcDate.getUTCDate();
+  const hour = utcDate.getUTCHours();
+  const minute = utcDate.getUTCMinutes();
+  const second = utcDate.getUTCSeconds() + utcDate.getUTCMilliseconds() / 1000;
+
+  const jd = utc_to_jd(year, month, day, hour, minute, second, C.SE_GREG_CAL);
+  if (jd.flag !== C.OK) {
+    throw new Error(`Julian Day conversion failed: ${jd.error}`);
+  }
+  const jdUt = jd.data[1];
+
+  // Houses + Ascendant + MC (only meaningful with a real birth time)
+  let houses: HouseCusp[] | null = null;
+  let cuspArray: number[] | null = null;
+  let risingSign: string | null = null;
+  let risingDegree: number | null = null;
+  let ascendantLongitude: number | null = null;
+  let midheavenSign: string | null = null;
+  let midheavenDegree: number | null = null;
+
+  if (birthTime) {
+    const h = houses_ex2(jdUt, 0, latitude, longitude, "P"); // Placidus
+    if (h.flag !== C.OK && h.error) {
+      throw new Error(`House calculation failed: ${h.error}`);
+    }
+    cuspArray = h.data.houses.slice(0, 12);
+    houses = cuspArray.map((lon, i) => {
+      const { sign, degree } = longitudeToSign(lon);
+      return { house: i + 1, longitude: Math.round(lon * 100) / 100, sign, degree };
+    });
+
+    const ascLon = h.data.points[0]; // SE_ASC = 0
+    const mcLon = h.data.points[1];  // SE_MC = 1
+    const asc = longitudeToSign(ascLon);
+    const mc = longitudeToSign(mcLon);
+    risingSign = asc.sign;
+    risingDegree = asc.degree;
+    ascendantLongitude = Math.round(ascLon * 100) / 100;
+    midheavenSign = mc.sign;
+    midheavenDegree = mc.degree;
+  }
+
+  // Bodies
+  const placements: PlanetPlacement[] = [];
+  for (const body of BODIES) {
+    const result = calc_ut(jdUt, body.id, FLAGS);
+    if (result.flag < 0 || result.error) {
+      // Skip any body Moshier can't handle — log but don't kill the whole chart
+      console.warn(`sweph calc failed for ${body.name}: ${result.error}`);
+      continue;
+    }
+    const lon = result.data[0];
     const { sign, degree } = longitudeToSign(lon);
-    return {
-      planet: body.toString(),
+    const placement: PlanetPlacement = {
+      planet: body.name,
       longitude: Math.round(lon * 100) / 100,
       sign,
       degree,
     };
-  });
+    if (cuspArray) placement.house = assignHouse(lon, cuspArray);
+    placements.push(placement);
+  }
 
-  // North Node (Mean Lunar Node)
-  const nnLon = calculateNorthNode(time);
-  const nn = longitudeToSign(nnLon);
-  placements.push({
-    planet: "North Node",
-    longitude: Math.round(nnLon * 100) / 100,
-    sign: nn.sign,
-    degree: nn.degree,
-  });
-
-  // South Node (always opposite the North Node)
-  const snLon = (nnLon + 180) % 360;
-  const sn = longitudeToSign(snLon);
-  placements.push({
-    planet: "South Node",
-    longitude: Math.round(snLon * 100) / 100,
-    sign: sn.sign,
-    degree: sn.degree,
-  });
-
-  // Chiron
-  const chironLon = calculateChiron(time);
-  const ch = longitudeToSign(chironLon);
-  placements.push({
-    planet: "Chiron",
-    longitude: Math.round(chironLon * 100) / 100,
-    sign: ch.sign,
-    degree: ch.degree,
-  });
-
-  // Black Moon Lilith
-  const lilithLon = calculateLilith(time);
-  const li = longitudeToSign(lilithLon);
-  placements.push({
-    planet: "Lilith",
-    longitude: Math.round(lilithLon * 100) / 100,
-    sign: li.sign,
-    degree: li.degree,
-  });
-
-  // Rising sign only calculable with birth time
-  let risingSign: string | null = null;
-  let risingDegree: number | null = null;
-  let ascendantLongitude: number | null = null;
-  if (birthTime) {
-    const ascLon = calculateAscendant(time, latitude, longitude);
-    const { sign, degree } = longitudeToSign(ascLon);
-    risingSign = sign;
-    risingDegree = degree;
-    ascendantLongitude = Math.round(ascLon * 100) / 100;
+  // South Node = opposite True North Node
+  const northNode = placements.find((p) => p.planet === "North Node");
+  if (northNode) {
+    const snLon = (northNode.longitude + 180) % 360;
+    const { sign, degree } = longitudeToSign(snLon);
+    const sn: PlanetPlacement = {
+      planet: "South Node",
+      longitude: Math.round(snLon * 100) / 100,
+      sign,
+      degree,
+    };
+    if (cuspArray) sn.house = assignHouse(snLon, cuspArray);
+    placements.push(sn);
   }
 
   return {
@@ -267,7 +190,10 @@ export function calculateChart(
     risingSign,
     risingDegree,
     ascendantLongitude,
-    birthDateTime: date.toISOString(),
+    midheavenSign,
+    midheavenDegree,
+    houses,
+    birthDateTime: utcDate.toISOString(),
   };
 }
 
@@ -305,12 +231,7 @@ export function calculateAspects(placements: PlanetPlacement[]): string[] {
   return aspects;
 }
 
-/**
- * Resolve approximate birth time to a clock time string.
- */
-export function resolveApproximateTime(
-  approx: string
-): string | null {
+export function resolveApproximateTime(approx: string): string | null {
   switch (approx) {
     case "morning": return "09:00";
     case "afternoon": return "15:00";

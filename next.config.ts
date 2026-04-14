@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  serverExternalPackages: ["sweph"],
+  outputFileTracingIncludes: {
+    "/api/generate": ["./vendor/ephe/**/*", "./node_modules/sweph/**/*"],
+  },
 };
 
 export default nextConfig;

@@ -7,7 +7,11 @@ export interface FormData {
   birthTimeApproximate: "morning" | "afternoon" | "evening" | "night" | "";
   birthCity: string;
   birthState: string;
+  birthStateCode: string;
   birthCountry: string;
+  birthCountryCode: string;
+  birthLatitude: number | null;
+  birthLongitude: number | null;
 
   // Step 2: Life Context
   genderIdentity: string;
@@ -77,7 +81,11 @@ export const initialFormData: FormData = {
   birthTimeApproximate: "",
   birthCity: "",
   birthState: "",
+  birthStateCode: "",
   birthCountry: "",
+  birthCountryCode: "",
+  birthLatitude: null,
+  birthLongitude: null,
   genderIdentity: "",
   work: "",
   relationshipStatus: "",

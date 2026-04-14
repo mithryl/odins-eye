@@ -10,13 +10,18 @@ export function buildPrompt(
   formData: FormData,
 ): string {
   const placementBlock = chart.placements
-    .map((p) => `- ${p.planet}: ${p.sign} at ${p.degree}°`)
+    .map((p) => {
+      const house = p.house ? ` (House ${p.house})` : "";
+      return `- ${p.planet}: ${p.sign} at ${p.degree.toFixed(2)}°${house}`;
+    })
     .join("\n");
 
   const aspectBlock = aspects.join("\n- ");
 
   const risingBlock = chart.risingSign
-    ? `Rising Sign (Ascendant): ${chart.risingSign}`
+    ? `Rising Sign (Ascendant): ${chart.risingSign} at ${chart.risingDegree?.toFixed(2)}°${
+        chart.midheavenSign ? `\nMidheaven (MC): ${chart.midheavenSign} at ${chart.midheavenDegree?.toFixed(2)}°` : ""
+      }`
     : "Rising Sign: Unknown (birth time not precise enough)";
 
   // Build the user context section from form answers

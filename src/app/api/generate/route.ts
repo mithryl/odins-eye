@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { calculateChart, calculateAspects, resolveApproximateTime } from "@/lib/chart";
-import { geocodeCity } from "@/lib/geocode";
 import { buildPrompt } from "@/lib/prompt";
 import { FormData } from "@/lib/types";
 
@@ -29,17 +28,23 @@ export async function POST(request: NextRequest) {
       try {
         const formData: FormData = await request.json();
 
-        if (!formData.firstName || !formData.birthDate || !formData.birthCity) {
-          send({ event: "error", error: "Missing required fields: name, birth date, and birth city" });
+        if (
+          !formData.firstName ||
+          !formData.birthDate ||
+          !formData.birthCity ||
+          formData.birthLatitude === null ||
+          formData.birthLongitude === null
+        ) {
+          send({
+            event: "error",
+            error: "Missing required fields: name, birth date, and a selected birth city",
+          });
           clearInterval(heartbeat);
           controller.close();
           return;
         }
 
         send({ event: "status", message: "Calculating your chart..." });
-
-        // Geocode
-        const geo = await geocodeCity(formData.birthCity, formData.birthCountry, formData.birthState);
 
         // Resolve birth time
         let birthTime: string | null = null;
@@ -52,8 +57,8 @@ export async function POST(request: NextRequest) {
         const chart = calculateChart(
           formData.birthDate,
           birthTime,
-          geo.latitude,
-          geo.longitude,
+          formData.birthLatitude,
+          formData.birthLongitude,
         );
         const aspects = calculateAspects(chart.placements);
 
