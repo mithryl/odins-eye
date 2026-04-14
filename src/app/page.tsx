@@ -8,7 +8,7 @@ export default function Home() {
         <img
           src="/odinsark-clean.png"
           alt="Odinsark"
-          className="mx-auto mb-6 w-[320px] md:w-[420px] h-auto invert"
+          className="mx-auto mb-6 w-[80px] md:w-[105px] h-auto invert"
         />
         <h1 className="font-heading text-3xl md:text-4xl lg:text-5xl text-text-primary tracking-wide mb-3">
           Odin&apos;s Eye

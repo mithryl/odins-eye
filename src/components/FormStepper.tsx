@@ -13,14 +13,7 @@ interface SavedDraft {
 }
 import StepIndicator from "./StepIndicator";
 import BirthDataStep from "./steps/BirthDataStep";
-import LifeContextStep from "./steps/LifeContextStep";
-import SelfPerceptionStep from "./steps/SelfPerceptionStep";
-import FamilyStep from "./steps/FamilyStep";
-import EmotionalPatternsStep from "./steps/EmotionalPatternsStep";
-import RelationshipsStep from "./steps/RelationshipsStep";
-import AmbitionStep from "./steps/AmbitionStep";
-import DeeperSelfStep from "./steps/DeeperSelfStep";
-import AssessmentsStep from "./steps/AssessmentsStep";
+import FocusStep from "./steps/FocusStep";
 import ReviewStep from "./steps/ReviewStep";
 
 export default function FormStepper() {
@@ -104,6 +97,11 @@ export default function FormStepper() {
       if (!data.birthCity.trim() || data.birthLatitude === null) {
         return "Please select your birth city from the dropdown.";
       }
+    }
+    if (currentStep === 1) {
+      if (data.focusAreas.length === 0) return "Pick at least one focus area.";
+      if (!data.lifeChapter) return "Tell us where you are in this chapter.";
+      if (!data.readingIntent) return "Tell us what you want from this reading.";
     }
     return null;
   };
@@ -200,14 +198,7 @@ export default function FormStepper() {
 
   const stepComponents = [
     <BirthDataStep key="birth" {...stepProps} />,
-    <LifeContextStep key="context" {...stepProps} />,
-    <SelfPerceptionStep key="perception" {...stepProps} />,
-    <FamilyStep key="family" {...stepProps} />,
-    <EmotionalPatternsStep key="emotions" {...stepProps} />,
-    <RelationshipsStep key="relationships" {...stepProps} />,
-    <AmbitionStep key="ambition" {...stepProps} />,
-    <DeeperSelfStep key="deeper" {...stepProps} />,
-    <AssessmentsStep key="assessments" {...stepProps} />,
+    <FocusStep key="focus" {...stepProps} />,
     <ReviewStep key="review" {...stepProps} />,
   ];
 

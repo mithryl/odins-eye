@@ -13,64 +13,13 @@ export interface FormData {
   birthLatitude: number | null;
   birthLongitude: number | null;
 
-  // Step 2: Life Context
-  genderIdentity: string;
-  work: string;
-  relationshipStatus: string;
-  hasKids: string;
-  inTransition: string;
-  transitionDescription: string;
-
-  // Step 3: Self-Perception
-  friendDescription: string;
-  misunderstood: string;
-  conflictStyle: string;
-  controlRelationship: string;
-  feelingStuck: string;
-  deepestWant: string;
-
-  // Step 4: Family & Upbringing
-  motherRelationship: string;
-  fatherRelationship: string;
-  familyRole: string;
-  childhoodStability: string;
-  lastingImpact: string;
-
-  // Step 5: Emotional Patterns
-  dailyEmotion: string;
-  hardestToExpress: string;
-  overwhelmResponse: string;
-  othersNeedsFirst: string;
-  rechargeMethod: string;
-
-  // Step 6: Relationships & Connection
-  relationshipChallenge: string;
-  loseOrDistance: string;
-  unaskedNeed: string;
-  friendshipStyle: string;
-  fittingIn: string;
-
-  // Step 7: Ambition & Purpose
-  workAlignment: string;
-  primaryDrivers: string;
-  noConstraints: string;
-  riskTolerance: string;
-  ownLife: string;
-
-  // Step 8: The Deeper Stuff
-  deepestFear: string;
-  selfJudgment: string;
-  recurringPattern: string;
-  transformativeEvent: string;
-  transformativeEventTime: string;
-  intuitionTrust: string;
-  spiritualPractice: string;
-
-  // Step 9: Assessments (Optional)
-  mbtiType: string;
-  enneagramType: string;
-  otherAssessments: string;
-  additionalNotes: string;
+  // Step 2: Focus & Intent
+  focusAreas: string[];           // multi-select
+  lifeChapter: string;            // single-select
+  readingIntent: string;          // single-select
+  specificFocus: string;          // optional textarea
+  mbtiType: string;               // optional dropdown
+  enneagramType: string;          // optional dropdown
 }
 
 export const initialFormData: FormData = {
@@ -86,50 +35,53 @@ export const initialFormData: FormData = {
   birthCountryCode: "",
   birthLatitude: null,
   birthLongitude: null,
-  genderIdentity: "",
-  work: "",
-  relationshipStatus: "",
-  hasKids: "",
-  inTransition: "",
-  transitionDescription: "",
-  friendDescription: "",
-  misunderstood: "",
-  conflictStyle: "",
-  controlRelationship: "",
-  feelingStuck: "",
-  deepestWant: "",
-  motherRelationship: "",
-  fatherRelationship: "",
-  familyRole: "",
-  childhoodStability: "",
-  lastingImpact: "",
-  dailyEmotion: "",
-  hardestToExpress: "",
-  overwhelmResponse: "",
-  othersNeedsFirst: "",
-  rechargeMethod: "",
-  relationshipChallenge: "",
-  loseOrDistance: "",
-  unaskedNeed: "",
-  friendshipStyle: "",
-  fittingIn: "",
-  workAlignment: "",
-  primaryDrivers: "",
-  noConstraints: "",
-  riskTolerance: "",
-  ownLife: "",
-  deepestFear: "",
-  selfJudgment: "",
-  recurringPattern: "",
-  transformativeEvent: "",
-  transformativeEventTime: "",
-  intuitionTrust: "",
-  spiritualPractice: "",
+  focusAreas: [],
+  lifeChapter: "",
+  readingIntent: "",
+  specificFocus: "",
   mbtiType: "",
   enneagramType: "",
-  otherAssessments: "",
-  additionalNotes: "",
 };
+
+export const FOCUS_AREAS = [
+  { value: "career", label: "Career & purpose" },
+  { value: "love", label: "Love & romance" },
+  { value: "family", label: "Family & roots" },
+  { value: "friends", label: "Friendships & community" },
+  { value: "health", label: "Health & body" },
+  { value: "money", label: "Money & resources" },
+  { value: "spirituality", label: "Inner work & spirituality" },
+  { value: "creativity", label: "Creativity & expression" },
+];
+
+export const LIFE_CHAPTERS = [
+  { value: "building", label: "Building something new" },
+  { value: "transition", label: "In transition" },
+  { value: "steady", label: "Steady & settled" },
+  { value: "stuck", label: "Stuck or waiting" },
+  { value: "reckoning", label: "Facing hard truths" },
+];
+
+export const READING_INTENTS = [
+  { value: "blindspots", label: "Show me what I might be missing about myself" },
+  { value: "sense", label: "Help me make sense of where I am" },
+  { value: "pattern", label: "Help me with a pattern I keep hitting" },
+  { value: "decision", label: "Help me with a decision I'm weighing" },
+  { value: "curious", label: "I'm just curious — show me what you see" },
+];
+
+export const MBTI_TYPES = [
+  "INTJ", "INTP", "ENTJ", "ENTP",
+  "INFJ", "INFP", "ENFJ", "ENFP",
+  "ISTJ", "ISFJ", "ESTJ", "ESFJ",
+  "ISTP", "ISFP", "ESTP", "ESFP",
+];
+
+export const ENNEAGRAM_TYPES = [
+  "1 - Reformer", "2 - Helper", "3 - Achiever", "4 - Individualist",
+  "5 - Investigator", "6 - Loyalist", "7 - Enthusiast", "8 - Challenger",
+  "9 - Peacemaker",
+];
 
 export interface StepConfig {
   id: string;
@@ -139,14 +91,7 @@ export interface StepConfig {
 
 export const STEPS: StepConfig[] = [
   { id: "birth", title: "The Beginning", subtitle: "Your birth data anchors everything" },
-  { id: "context", title: "Where You Stand", subtitle: "The landscape of your life right now" },
-  { id: "perception", title: "How You See Yourself", subtitle: "The mirror you carry" },
-  { id: "family", title: "Where You Come From", subtitle: "The soil you grew in" },
-  { id: "emotions", title: "What You Feel", subtitle: "Your emotional architecture" },
-  { id: "relationships", title: "How You Connect", subtitle: "The space between you and others" },
-  { id: "ambition", title: "Where You're Headed", subtitle: "Purpose, drive, and direction" },
-  { id: "deeper", title: "What Lies Beneath", subtitle: "The depths most people never share" },
-  { id: "assessments", title: "Additional Insights", subtitle: "Optional — if you know these, they deepen the reading" },
+  { id: "focus", title: "Set Your Intention", subtitle: "A few quick questions so the reading lands where it matters" },
   { id: "review", title: "Your Reading Awaits", subtitle: "Review and generate your natal portrait" },
 ];
 
