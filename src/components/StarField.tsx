@@ -36,24 +36,22 @@ export default function StarField() {
     const isMobile = window.matchMedia("(max-width: 768px)").matches;
     const STAR_COUNT = isMobile ? MOBILE_STAR_COUNT : DESKTOP_STAR_COUNT;
 
-    // Get viewport dimensions, preferring visualViewport on mobile for
-    // accurate sizing that accounts for the dynamic address bar.
+    // Lock the canvas to the largest viewport seen so the address-bar
+    // show/hide on mobile doesn't trigger a resize + re-init loop.
+    let currentW = 0;
+    let currentH = 0;
+
     function getViewport(): { w: number; h: number } {
-      const vv = window.visualViewport;
-      if (vv) {
-        return {
-          w: Math.floor(vv.width),
-          h: Math.floor(vv.height),
-        };
-      }
       return {
         w: window.innerWidth,
-        h: window.innerHeight,
+        h: Math.max(window.innerHeight, document.documentElement.clientHeight),
       };
     }
 
     function resize() {
       const { w, h } = getViewport();
+      currentW = w;
+      currentH = h;
       canvas!.style.width = w + "px";
       canvas!.style.height = h + "px";
       canvas!.width = Math.floor(w * dpr);
@@ -62,7 +60,8 @@ export default function StarField() {
     }
 
     function initStars() {
-      const { w, h } = getViewport();
+      const w = currentW;
+      const h = currentH;
       const stars: Star[] = [];
       for (let i = 0; i < STAR_COUNT; i++) {
         const x = Math.random() * w;
@@ -90,7 +89,8 @@ export default function StarField() {
     }
 
     function draw(time: number) {
-      const { w, h } = getViewport();
+      const w = currentW;
+      const h = currentH;
       ctx!.clearRect(0, 0, w, h);
 
       const stars = starsRef.current;
@@ -161,16 +161,25 @@ export default function StarField() {
     resize();
     initStars();
 
+    // Only re-layout when width actually changes (orientation change,
+    // desktop window resize). Ignore height-only changes — on mobile those
+    // are just the address bar showing/hiding and cause flicker.
     const handleResize = () => {
+      const { w, h } = getViewport();
+      if (w === currentW && h <= currentH) return;
+      if (w === currentW) {
+        currentH = h;
+        canvas!.style.height = h + "px";
+        canvas!.height = Math.floor(h * dpr);
+        ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
+        return;
+      }
       resize();
       initStars();
     };
-    window.addEventListener("resize", handleResize);
     window.addEventListener("orientationchange", handleResize);
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", handleResize);
-    }
     if (!isMobile) {
+      window.addEventListener("resize", handleResize);
       window.addEventListener("mousemove", handleMouseMove);
     }
     animationRef.current = requestAnimationFrame(draw);
@@ -179,9 +188,6 @@ export default function StarField() {
       cancelAnimationFrame(animationRef.current);
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("orientationchange", handleResize);
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener("resize", handleResize);
-      }
       window.removeEventListener("mousemove", handleMouseMove);
     };
   }, []);
