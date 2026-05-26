@@ -39,3 +39,35 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+
+# Added by Mimir
+.env
+.env.*
+!.env.example
+!.env.sample
+credentials.json
+service-account.json
+id_rsa
+id_ed25519
+.npmrc
+.pypirc
+.next
+out/
+dist/
+build/
+target/
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+Thumbs.db
+.vscode/
+.idea/
+*.code-workspace
+.claude/projects/
