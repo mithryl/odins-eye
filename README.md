@@ -70,7 +70,7 @@ Plus a full aspect grid (conjunctions, sextiles, squares, trines, oppositions) a
 ## Install
 
 ```bash
-git clone https://github.com/odinsark/odins-eye.git
+git clone https://github.com/mithryl/odins-eye.git
 cd odins-eye
 npm install
 ```
