@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { getAnthropicModel } from "@/lib/anthropicModel";
 import { calculateChart, calculateAspects, resolveApproximateTime } from "@/lib/chart";
 import {
   checkGenerationQuota,
@@ -136,7 +137,7 @@ export async function POST(request: NextRequest) {
 
         const client = new Anthropic({ apiKey });
         const messageStream = client.messages.stream({
-          model: "claude-sonnet-4-20250514",
+          model: getAnthropicModel(),
           max_tokens: 8192,
           messages: [{ role: "user", content: prompt }],
         });
