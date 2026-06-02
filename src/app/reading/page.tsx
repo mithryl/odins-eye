@@ -462,7 +462,12 @@ function ReadingContent() {
       </article>
 
       <footer className="py-6 text-center text-xs text-text-muted">
-        <p>Odinsark Labs LLC</p>
+        <a
+          href="https://www.mithryl.dev/"
+          className="transition-colors hover:text-gold"
+        >
+          Mithryl Labs
+        </a>
       </footer>
     </main>
   );
