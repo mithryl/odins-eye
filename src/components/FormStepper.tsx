@@ -138,7 +138,18 @@ export default function FormStepper() {
         body: JSON.stringify(data),
       });
 
-      if (!response.ok || !response.body) {
+      if (!response.ok) {
+        let message = "Failed to reach the server";
+        try {
+          const payload = await response.json() as { error?: string };
+          if (payload.error) message = payload.error;
+        } catch {
+          // Keep the generic message when the server did not return JSON.
+        }
+        throw new Error(message);
+      }
+
+      if (!response.body) {
         throw new Error("Failed to reach the server");
       }
 
@@ -150,7 +161,6 @@ export default function FormStepper() {
       let result: Record<string, unknown> | null = null;
       let streamError: string | null = null;
 
-      // eslint-disable-next-line no-constant-condition
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
